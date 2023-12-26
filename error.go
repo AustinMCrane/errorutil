@@ -4,28 +4,35 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 )
 
 // WrappedError A Wrapped Error
 type WrappedError struct {
 	frame runtime.Frame
 	Err   error
+	Msg   string
 }
 
 // Wrap Wrap the error with a stack frame
-func wrap(skip int, err error) error {
+func wrap(skip int, err error, msg ...string) error {
 	var f [3]uintptr
 	runtime.Callers(skip, f[:])
 	frames := runtime.CallersFrames(f[:])
 	fr, _ := frames.Next()
 
-	return WrappedError{frame: fr, Err: err}
+	return WrappedError{frame: fr, Err: err, Msg: strings.Join(msg, " ")}
 }
 
 func (w WrappedError) Error() string {
 	if w.Err != nil {
-		return w.Err.Error() + fmt.Sprintf("\n    %s\n\t%s:%d", w.frame.Function, w.frame.File,
-			w.frame.Line)
+		prefix := ""
+		if w.Msg != "" {
+			prefix = w.Msg + ": "
+		}
+		return prefix + w.Err.Error() +
+			fmt.Sprintf("\n    %s\n\t%s:%d", w.frame.Function, w.frame.File,
+				w.frame.Line)
 	}
 
 	return fmt.Sprintf("\n    %s\n\t%s:%d", w.frame.Function, w.frame.File,
@@ -41,7 +48,7 @@ func New(msg string) error {
 	return wrap(3, err)
 }
 
-func Wrap(err error) error {
-	return wrap(3, err)
+func Wrap(err error, msg ...string) error {
+	return wrap(3, err, msg...)
 
 }
